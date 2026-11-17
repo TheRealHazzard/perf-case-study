@@ -1,33 +1,42 @@
 'use client';
 
-// STAGE 1 - IMAGES. Responsive, modern-format images; hero preloaded, gallery lazy; no layout shift.
+// STAGE 2 - BUNDLE. moment and lodash removed, the chart library is loaded on demand.
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import _ from 'lodash';
-import moment from 'moment';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import dynamic from 'next/dynamic';
 import { makeOrders } from '../lib/data';
 
-const orders = makeOrders(3000);
+const RevenueChart = dynamic(() => import('../components/RevenueChart'), {
+  ssr: false,
+  loading: () => <div style={{ height: '100%' }} />,
+});
 
-// Runs on every render, formats thousands of dates with moment, groups with lodash.
+const orders = makeOrders(3000);
+const monthKey = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', timeZone: 'UTC' });
+const monthName = new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' });
+const longDate = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+
+// Runs on every render (fixed in stage 3).
 function computeStats(query: string) {
-  const rows = orders.filter((o) => o.customer.toLowerCase().includes(query.toLowerCase()));
-  const byMonth = _.groupBy(rows, (o) => moment(o.date).format('YYYY-MM'));
-  const monthly = _.orderBy(
-    Object.entries(byMonth).map(([month, list]) => ({
-      month: moment(month + '-01').format('MMM'),
-      key: month,
-      revenue: Math.round(_.sumBy(list, 'amount')),
-    })),
-    'key',
-  );
-  const total = _.sumBy(rows, 'amount');
-  const best = _.maxBy(Object.entries(_.groupBy(rows, 'region')), ([, l]) => _.sumBy(l, 'amount'));
+  const q = query.toLowerCase();
+  const rows = orders.filter((o) => o.customer.toLowerCase().includes(q));
+  const months = new Map<string, number>();
+  const regions = new Map<string, number>();
+  let total = 0;
+  for (const o of rows) {
+    const key = monthKey.format(new Date(o.date));
+    months.set(key, (months.get(key) ?? 0) + o.amount);
+    regions.set(o.region, (regions.get(o.region) ?? 0) + o.amount);
+    total += o.amount;
+  }
+  const monthly = [...months.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, revenue]) => ({ month: monthName.format(new Date(key + '-01T00:00:00Z')), revenue: Math.round(revenue) }));
+  const bestRegion = [...regions.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '-';
   // simulate a heavier analytics pass
   let checksum = 0;
   for (let i = 0; i < 4_000_000; i++) checksum = (checksum + i * 31) % 1000003;
-  return { rows, monthly, total, bestRegion: best?.[0] ?? '-', checksum };
+  return { rows, monthly, total, bestRegion, checksum };
 }
 
 export default function Page() {
@@ -57,15 +66,7 @@ export default function Page() {
 
         <h2>Revenue by month</h2>
         <div className="chart">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={stats.monthly}>
-              <CartesianGrid stroke="#30363d" />
-              <XAxis dataKey="month" stroke="#8b949e" />
-              <YAxis stroke="#8b949e" />
-              <Tooltip />
-              <Bar dataKey="revenue" fill="#58a6ff" />
-            </BarChart>
-          </ResponsiveContainer>
+          <RevenueChart data={stats.monthly} />
         </div>
 
         <h2>Gear</h2>
@@ -87,7 +88,7 @@ export default function Page() {
                 <td>{o.id}</td>
                 <td>{o.customer}</td>
                 <td>{o.region}</td>
-                <td>{moment(o.date).format('MMMM Do, YYYY')}</td>
+                <td>{longDate.format(new Date(o.date))}</td>
                 <td>${o.amount.toFixed(2)}</td>
               </tr>
             ))}
