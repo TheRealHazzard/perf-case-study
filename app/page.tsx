@@ -1,7 +1,8 @@
 'use client';
 
-// STAGE 0 - BASELINE. Everything here is intentionally slow. See README for the fixes.
+// STAGE 1 - IMAGES. Responsive, modern-format images; hero preloaded, gallery lazy; no layout shift.
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import _ from 'lodash';
 import moment from 'moment';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -42,11 +43,11 @@ export default function Page() {
   return (
     <>
       <div className="hero">
-        <img src="/img/hero.jpg" alt="Mountain ridge at dusk" />
+        <Image src="/img/hero.jpg" alt="Mountain ridge at dusk" fill priority sizes="100vw" />
         <h1>Summit Gear Co.</h1>
       </div>
       <div className="wrap">
-        {banner && <div className="banner">Free shipping on orders over $150 this week.</div>}
+        <div className="banner-slot">{banner && <div className="banner">Free shipping on orders over $150 this week.</div>}</div>
 
         <div className="stats">
           <div className="stat"><span>Orders</span><strong>{stats.rows.length}</strong></div>
@@ -70,7 +71,7 @@ export default function Page() {
         <h2>Gear</h2>
         <div className="gallery">
           {Array.from({ length: 24 }, (_, i) => (
-            <img key={i} src={`/img/gear-${i + 1}.jpg`} alt={`Gear ${i + 1}`} />
+            <Image key={i} src={`/img/gear-${i + 1}.jpg`} alt={`Gear ${i + 1}`} width={1600} height={1067} sizes="(max-width: 600px) 50vw, 220px" />
           ))}
         </div>
 
