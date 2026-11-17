@@ -1,4 +1,5 @@
-// STAGE 4 - SERVER COMPONENT. The page is rendered at build time. Only the banner,
+// STAGE 5 - POLISH. Hero quality tuned, chart loaded when it nears the viewport. The page
+// is rendered at build time; only the banner,
 // the chart and the filterable table ship JavaScript.
 import Image from 'next/image';
 import { makeOrders } from '../lib/data';
@@ -15,7 +16,7 @@ export default function Page() {
   return (
     <>
       <div className="hero">
-        <Image src="/img/hero.jpg" alt="Mountain ridge at dusk" fill priority sizes="100vw" />
+        <Image src="/img/hero.jpg" alt="Mountain ridge at dusk" fill priority quality={60} sizes="100vw" />
         <h1>Summit Gear Co.</h1>
       </div>
       <div className="wrap">
