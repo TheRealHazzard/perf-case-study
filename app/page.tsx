@@ -1,7 +1,7 @@
 'use client';
 
-// STAGE 2 - BUNDLE. moment and lodash removed, the chart library is loaded on demand.
-import { useEffect, useState } from 'react';
+// STAGE 3 - RENDER WORK. Stats memoized, filtering deferred, the table paginated.
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { makeOrders } from '../lib/data';
@@ -16,7 +16,7 @@ const monthKey = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-d
 const monthName = new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' });
 const longDate = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 
-// Runs on every render (fixed in stage 3).
+// Pure function of the query; the component memoizes it.
 function computeStats(query: string) {
   const q = query.toLowerCase();
   const rows = orders.filter((o) => o.customer.toLowerCase().includes(q));
@@ -42,7 +42,9 @@ function computeStats(query: string) {
 export default function Page() {
   const [query, setQuery] = useState('');
   const [banner, setBanner] = useState(false);
-  const stats = computeStats(query);
+  const deferredQuery = useDeferredValue(query);
+  const stats = useMemo(() => computeStats(deferredQuery), [deferredQuery]);
+  const [visible, setVisible] = useState(50);
 
   useEffect(() => {
     const t = setTimeout(() => setBanner(true), 600);
@@ -83,7 +85,7 @@ export default function Page() {
             <tr><th>#</th><th>Customer</th><th>Region</th><th>Date</th><th>Amount</th></tr>
           </thead>
           <tbody>
-            {stats.rows.slice(0, 1500).map((o) => (
+            {stats.rows.slice(0, visible).map((o) => (
               <tr key={o.id}>
                 <td>{o.id}</td>
                 <td>{o.customer}</td>
@@ -94,6 +96,11 @@ export default function Page() {
             ))}
           </tbody>
         </table>
+        {visible < stats.rows.length && (
+          <button className="more" onClick={() => setVisible((v) => v + 100)}>
+            Show more ({stats.rows.length - visible} left)
+          </button>
+        )}
       </div>
     </>
   );
